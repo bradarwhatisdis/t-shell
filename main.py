@@ -175,13 +175,15 @@ class TShellUI:
                     time_str = format_time(msg.date)
                     msg_text = msg.text or "[media]"
                     
-                    if msg.from_id:
-                        sender_id = msg.from_id.user_id if hasattr(msg.from_id, 'user_id') else str(msg.from_id)
-                        sender = f"User#{sender_id}"
-                    elif hasattr(msg, 'sender') and msg.sender:
-                        sender = getattr(msg.sender, 'first_name', None) or getattr(msg.sender, 'title', 'Unknown')
-                    else:
-                        sender = "Unknown"
+                    sender = "Unknown"
+                    if hasattr(msg.sender, 'username') and msg.sender.username:
+                        sender = f"@{msg.sender.username}"
+                    elif hasattr(msg.sender, 'first_name') and msg.sender.first_name:
+                        sender = msg.sender.first_name
+                    elif hasattr(msg.sender, 'title') and msg.sender.title:
+                        sender = msg.sender.title
+                    elif msg.from_id and hasattr(msg.from_id, 'user_id'):
+                        sender = f"User#{msg.from_id.user_id}"
                     
                     msg_lines = msg_text.split('\n')
                     msg_formatted = '\n'.join(msg_lines[:5])
