@@ -308,19 +308,13 @@ async def main():
                 
                 if key == readchar.key.UP:
                     ui.navigate(-1)
-                    ui.loading = True
-                    live.update(ui.render())
                     entity = ui.dialogs[ui.selected_chat].entity
                     ui.messages = await client.get_messages(entity, limit=50)
-                    ui.loading = False
                     live.update(ui.render())
                 elif key == readchar.key.DOWN:
                     ui.navigate(1)
-                    ui.loading = True
-                    live.update(ui.render())
                     entity = ui.dialogs[ui.selected_chat].entity
                     ui.messages = await client.get_messages(entity, limit=50)
-                    ui.loading = False
                     live.update(ui.render())
                 elif key.lower() == 'r':
                     ui.dialogs = await client.get_dialogs(limit=100)
