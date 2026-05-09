@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from rich.console import Console
+from rich.console import Console, Group
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
@@ -13,13 +13,15 @@ from src.client import TShellClient
 
 console = Console()
 
-NORD_COLORS = {
+NORD = {
     "bg": "#2E3440",
     "bg_light": "#3B4252",
+    "bg_lighter": "#434C5E",
     "accent": "#88C0D0",
     "accent_bright": "#81A1C1",
     "text": "#ECEFF4",
     "text_dim": "#D8DEE9",
+    "gray": "#4C566A",
     "user": "#88C0D0",
     "channel": "#B48EAD",
     "bot": "#A3BE8C",
@@ -28,10 +30,15 @@ NORD_COLORS = {
     "error": "#BF616A",
 }
 
+
+def markup(text: str) -> Text:
+    return Text.from_markup(text)
+
+
 class TShellUI:
     def __init__(self):
         self.layout = Layout()
-        self.selected_chat = None
+        self.selected_chat = 0
         self.me = None
         self.dialogs = []
 
@@ -39,38 +46,32 @@ class TShellUI:
         layout = Layout()
         layout.split(
             Layout(name="header", size=3),
-            Layout(name="main", ratio=1),
+            Layout(name="main"),
             Layout(name="footer", size=3),
         )
         layout["main"].split_row(
             Layout(name="sidebar", ratio=1),
-            Layout(name="chat_view", ratio=2),
+            Layout(name="chat_view", ratio=3),
         )
         return layout
 
     def render_header(self) -> Panel:
         username = f"@{self.me.username}" if self.me.username else "no username"
-        user_display = f"[{NORD_COLORS['accent_bright']}]{self.me.first_name}[/{NORD_COLORS['accent_bright']}] [dim]({username})[/dim]"
-
-        content = Text.assemble(
-            f"  [bold {NORD_COLORS['accent']}]t-shell[/bold {NORD_COLORS['accent']}]",
-            "  │  ",
-            user_display,
-            "  │  ",
-            f"[dim]ID: {self.me.id}[/dim]",
-        )
-
+        user_line = f"[link]Logged in as[/link] [bold #ECEFF4]{self.me.first_name}[/bold #ECEFF4] [#D8DEE9]({username})[/]  |  [#4C566A]ID:[/] [#88C0D0]{self.me.id}[/]"
+        
+        content = Text.from_markup(f"  [#88C0D0 bold]t-shell[/]  │  {user_line}")
+        
         return Panel(
             content,
-            border_style=NORD_COLORS['accent'],
+            border_style="#81A1C1",
             box=box.ROUNDED,
             padding=(0, 1),
             height=3,
         )
 
-    def render_sidebar(self, console_width: int) -> Panel:
-        chat_lines = []
-
+    def render_sidebar(self) -> Panel:
+        lines = []
+        
         for idx, dialog in enumerate(self.dialogs):
             entity = dialog.entity
             name = getattr(entity, 'first_name', None) or getattr(entity, 'title', 'Unknown')
@@ -80,123 +81,139 @@ class TShellUI:
             is_bot = getattr(entity, 'is_bot', False)
 
             if is_user:
-                color = NORD_COLORS['user']
+                color = "#88C0D0"
                 icon = "👤"
             elif is_channel:
-                color = NORD_COLORS['channel']
+                color = "#B48EAD"
                 icon = "📢" if getattr(entity, 'broadcast', False) else "👥"
             elif is_bot:
-                color = NORD_COLORS['bot']
+                color = "#A3BE8C"
                 icon = "🤖"
             else:
-                color = NORD_COLORS['text_dim']
+                color = "#ECEFF4"
                 icon = "💬"
 
-            max_name = 35
-            display_name = str(name)[:max_name] + ("..." if len(str(name)) > max_name else "")
+            max_name = 28
+            if len(str(name)) > max_name:
+                display_name = str(name)[:max_name-3] + "..."
+            else:
+                display_name = str(name)
 
-            selector = "[bold green]>[/bold green] " if self.selected_chat == idx else "   "
-            line = f"{selector}[{color}]{icon} {display_name}[/{color}]"
+            is_selected = idx == self.selected_chat
+            prefix = "[#A3BE8B bold]> [/]" if is_selected else "   "
+
+            name_text = Text.from_markup(f"{prefix}[{color} bold]{icon} {display_name}[/]")
 
             if dialog.message and dialog.message.text:
-                msg = dialog.message.text[:40].replace('\n', ' ')
-                line += f"\n[dim]    {msg}[/dim]"
+                msg_text = dialog.message.text.replace('\n', ' ')[:40]
+                if len(dialog.message.text) > 40:
+                    msg_text += "..."
+                msg_line = Text.from_markup(f"  [#4C566A]{msg_text}[/]")
+                lines.append(Group(name_text, msg_line))
+            else:
+                lines.append(name_text)
 
-            chat_lines.append(line)
+        if not lines:
+            lines = [Text.from_markup("[#4C566A]No chats found[/]")]
 
-        if not chat_lines:
-            chat_lines = [f"[dim]No chats found[/dim]"]
-
-        content = Text("\n".join(chat_lines))
+        content = Group(*lines)
+        
         return Panel(
             content,
-            title=f"[bold {NORD_COLORS['accent']}]Chats[/bold {NORD_COLORS['accent']}]",
-            border_style=NORD_COLORS['accent'],
+            title=markup("[bold #88C0D0]Chats[/]"),
+            border_style="#88C0D0",
             box=box.ROUNDED,
             padding=(0, 1),
         )
 
     def render_chat_view(self) -> Panel:
-        if self.selected_chat is not None and self.selected_chat < len(self.dialogs):
+        if self.dialogs and self.selected_chat < len(self.dialogs):
             dialog = self.dialogs[self.selected_chat]
             entity = dialog.entity
             name = getattr(entity, 'first_name', None) or getattr(entity, 'title', 'Unknown')
 
-            content = Text.from_markup(
-                f"[bold {NORD_COLORS['accent']}]Selected:[/bold {NORD_COLORS['accent']}] {name}\n\n"
-                f"[dim]Conversation will appear here...[/dim]"
+            content = markup(
+                f"[bold #88C0D0]{name}[/]\n\n"
+                f"[#4C566A]Messages will appear here...[/]\n\n"
+                f"[#D8DEE9]Entity ID:[/] [#81A1C1]{entity.id}[/]"
             )
         else:
-            content = Text.from_markup(
-                f"[bold {NORD_COLORS['accent_bright']}]Welcome to t-shell![/bold {NORD_COLORS['accent_bright']}]\n\n"
-                f"[{NORD_COLORS['text_dim']}]Select a chat from the sidebar to start messaging.[/{NORD_COLORS['text_dim']}]\n\n"
-                f"[dim]System Info:[/dim]\n"
-                f"  [{NORD_COLORS['success']}]●[/] Connected\n"
-                f"  [{NORD_COLORS['warning']}]●[/] DC: Main\n"
-                f"  [{NORD_COLORS['accent']}]●[/] Ping: ~50ms\n"
-                f"  [{NORD_COLORS['text_dim']}]●[/] Version: 0.1.0"
+            content = markup(
+                f"[bold #81A1C1]Welcome to t-shell![/]\n\n"
+                f"[#D8DEE9]Select a chat from the sidebar to start.[/]\n\n"
+                f"[#4C566A]─────────────────────────[/]\n"
+                f"[#A3BE8C]●[/] [#ECEFF4]Connected[/]\n"
+                f"[#EBCB8B]●[/] [#ECEFF4]DC: Main[/]\n"
+                f"[#88C0D0]●[/] [#ECEFF4]Ping: ~50ms[/]\n"
+                f"[#4C566A]─────────────────────────[/]\n\n"
+                f"[#4C566A]Version:[/] [#81A1C1]0.1.0[/]"
             )
 
         return Panel(
             content,
-            title=f"[bold {NORD_COLORS['accent']}]Chat View[/bold {NORD_COLORS['accent']}]",
-            border_style=NORD_COLORS['accent'],
+            title=markup("[bold #88C0D0]Chat View[/]"),
+            border_style="#88C0D0",
             box=box.ROUNDED,
             padding=(1, 2),
         )
 
     def render_footer(self) -> Panel:
+        refresh = markup("[#2E3440 on #EBCB8B bold] R [/]")
+        up = markup("[#2E3440 on #EBCB8B bold] ↑↓ [/]")
+        enter = markup("[#2E3440 on #A3BE8C bold] Enter [/]")
+        quit_btn = markup("[#2E3440 on #BF616A bold] Q [/]")
+
         content = Text.assemble(
-            f"  [{NORD_COLORS['warning']}][R][/] Refresh  ",
-            f"  [{NORD_COLORS['warning']}][↑/↓][/] Navigate  ",
-            f"  [{NORD_COLORS['warning']}][Enter][/] Select  ",
-            f"  [{NORD_COLORS['error']}][Q][/] Quit",
+            f"  {refresh} Refresh  ",
+            f"  {up} Navigate  ",
+            f"  {enter} Select  ",
+            f"  {quit_btn} Quit",
         )
 
         return Panel(
             content,
-            border_style=NORD_COLORS['bg_light'],
+            border_style="#4C566A",
             box=box.ROUNDED,
             padding=(0, 1),
             height=3,
         )
 
-    def render(self, console_width: int):
+    def render(self) -> Layout:
         self.layout = self.create_layout()
         self.layout["header"].update(self.render_header())
-        self.layout["sidebar"].update(self.render_sidebar(console_width))
+        self.layout["sidebar"].update(self.render_sidebar())
         self.layout["chat_view"].update(self.render_chat_view())
         self.layout["footer"].update(self.render_footer())
         return self.layout
 
 
-async def setup_credentials(config: Config):
+async def setup_credentials():
     console.print("\n")
-    with Panel(
-        Text("T-Shell Authentication Setup", style=f"bold {NORD_COLORS['accent']}"),
-        border_style=NORD_COLORS['accent'],
+    console.print(Panel(
+        markup("[bold #88C0D0]T-Shell Authentication Setup[/]"),
+        border_style="#81A1C1",
         box=box.ROUNDED,
-        padding=(1, 2)
-    ) as panel:
-        console.print(panel)
+        padding=(1, 2),
+    ))
 
-    api_id = Prompt.ask(f"  [{NORD_COLORS['warning']}]API ID[/{NORD_COLORS['warning']}]")
-    api_hash = Prompt.ask(f"  [{NORD_COLORS['warning']}]API Hash[/{NORD_COLORS['warning']}]")
-    phone = Prompt.ask(f"  [{NORD_COLORS['warning']}]Phone (with country code)[/{NORD_COLORS['warning']}]")
+    api_id = Prompt.ask(markup("  [#EBCB8B]API ID[/]"))
+    api_hash = Prompt.ask(markup("  [#EBCB8B]API Hash[/]"))
+    phone = Prompt.ask(markup("  [#EBCB8B]Phone (with country code)[/]"))
 
+    config = Config()
     config.save_credentials(api_id, api_hash, phone)
-    console.print(f"\n  [{NORD_COLORS['success']}]✓[/] Credentials saved!\n")
+    console.print(markup(f"\n  [#A3BE8C]✓[/] [#A3BE8C]Credentials saved![/]\n"))
 
 
 async def main():
     config = Config()
 
     if not config.has_credentials():
-        setup = Confirm.ask(f"[{NORD_COLORS['warning']}]No credentials found. Set up now?[/{NORD_COLORS['warning']}]")
+        setup = Confirm.ask(markup("[#EBCB8B]No credentials found. Set up now?[/]"))
         if setup:
-            await setup_credentials(config)
+            await setup_credentials()
         else:
-            console.print(f"[{NORD_COLORS['error']}]Cannot proceed without credentials.[/{NORD_COLORS['error']}]")
+            console.print(markup("[#BF616A]Cannot proceed without credentials.[/]"))
             sys.exit(1)
 
     client = TShellClient(config)
@@ -207,18 +224,22 @@ async def main():
         ui.me = await client.get_me()
         ui.dialogs = await client.get_dialogs(limit=50)
 
-        console.clear()
-
-        with Live(ui.render(console.width), console=console, refresh_per_second=4, screen=True, transient=False) as live:
+        with Live(
+            ui.render(),
+            console=console,
+            refresh_per_second=4,
+            screen=True,
+            transient=False
+        ) as live:
             while True:
                 await asyncio.sleep(30)
                 ui.dialogs = await client.get_dialogs(limit=50)
-                live.update(ui.render(console.width))
+                live.update(ui.render())
 
     except (KeyboardInterrupt, EOFError):
         pass
     except Exception as e:
-        console.print(f"\n[{NORD_COLORS['error']}]Error:[/] {e}")
+        console.print(markup(f"\n[#BF616A]Error:[/] {e}"))
         sys.exit(1)
     finally:
         await client.close()
