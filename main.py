@@ -5,10 +5,7 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.text import Text
-from rich.box import Box
-
-from src.config import Config
-from src.client import TShellClient
+from rich import box
 
 console = Console()
 
