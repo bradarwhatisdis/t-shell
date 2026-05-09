@@ -38,6 +38,13 @@ class TShellClient:
         dialogs = await self.client.get_dialogs(limit=limit)
         return dialogs
 
+    async def get_messages(self, entity, limit: int = 50):
+        if not self.client:
+            raise RuntimeError("Client not initialized. Call start() first.")
+
+        messages = await self.client.get_messages(entity, limit=limit)
+        return messages
+
     async def close(self):
         if self.client:
             await self.client.disconnect()

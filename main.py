@@ -8,6 +8,7 @@ from rich.prompt import Prompt, Confirm
 from rich.text import Text
 from rich import box
 from rich.live import Live
+from datetime import datetime
 
 from src.config import Config
 from src.client import TShellClient
@@ -34,6 +35,18 @@ def markup(text: str) -> Text:
     return Text.from_markup(text)
 
 
+def format_time(dt):
+    if not dt:
+        return ""
+    now = datetime.now()
+    if dt.date() == now.date():
+        return dt.strftime("%H:%M")
+    elif (now - dt).days == 1:
+        return "Yesterday"
+    else:
+        return dt.strftime("%d %b")
+
+
 class TShellUI:
     def __init__(self):
         self.layout = Layout()
@@ -42,6 +55,8 @@ class TShellUI:
         self.visible_count = 20
         self.me = None
         self.dialogs = []
+        self.messages = []
+        self.loading = False
 
     def create_layout(self) -> Layout:
         layout = Layout()
@@ -133,7 +148,9 @@ class TShellUI:
         )
 
     def render_chat_view(self) -> Panel:
-        if self.dialogs and self.selected_chat < len(self.dialogs):
+        if self.loading:
+            content = markup(f"[bold #81A1C1]Loading messages...[/]")
+        elif self.dialogs and self.selected_chat < len(self.dialogs):
             dialog = self.dialogs[self.selected_chat]
             entity = dialog.entity
             name = getattr(entity, 'first_name', None) or getattr(entity, 'title', 'Unknown')
@@ -144,12 +161,28 @@ class TShellUI:
             if getattr(entity, 'is_bot', False):
                 entity_type = "Bot"
 
-            content = markup(
-                f"[bold #88C0D0]{name}[/]\n\n"
-                f"[#4C566A]Type:[/] [#ECEFF4]{entity_type}[/]\n"
-                f"[#4C566A]ID:[/] [#81A1C1]{entity.id}[/]\n\n"
-                f"[#D8DEE9]Messages will appear here...[/]"
+            header = markup(
+                f"[bold #88C0D0]{name}[/]\n"
+                f"[#4C566A]Type:[/] [#ECEFF4]{entity_type}[/]  "
+                f"[#4C566A]ID:[/] [#81A1C1]{entity.id}[/]"
             )
+
+            if self.messages:
+                msg_lines = []
+                for msg in reversed(self.messages):
+                    sender = getattr(msg.sender, 'first_name', 'Unknown')
+                    time_str = format_time(msg.date)
+                    msg_text = msg.text or "[media]"
+                    
+                    msg_short = msg_text[:80] + "..." if len(msg_text) > 80 else msg_text
+                    msg_short = msg_short.replace('\n', ' ')
+                    
+                    msg_lines.append(f"[#EBCB8B]{time_str}[/] [#81A1C1]{sender}[/]: [#ECEFF4]{msg_short}[/]")
+                
+                messages_text = Text.from_markup("\n".join(msg_lines))
+                content = Group(header, "", messages_text)
+            else:
+                content = Group(header, "", markup(f"[#4C566A]No messages[/]"))
         else:
             content = markup(
                 f"[bold #81A1C1]Welcome to t-shell![/]\n\n"
@@ -203,6 +236,7 @@ class TShellUI:
         new_index = self.selected_chat + direction
         if 0 <= new_index < len(self.dialogs):
             self.selected_chat = new_index
+            self.messages = []
             if self.selected_chat >= self.scroll_offset + self.visible_count:
                 self.scroll_offset = self.selected_chat - self.visible_count + 1
             elif self.selected_chat < self.scroll_offset:
@@ -246,6 +280,11 @@ async def main():
         ui.me = await client.get_me()
         ui.dialogs = await client.get_dialogs(limit=100)
         
+        if ui.dialogs:
+            ui.loading = True
+            ui.messages = await client.get_messages(ui.dialogs[0].entity, limit=50)
+            ui.loading = False
+        
         console.clear()
 
         with Live(
@@ -260,9 +299,17 @@ async def main():
                 
                 if key == readchar.key.UP:
                     ui.navigate(-1)
+                    ui.loading = True
+                    live.update(ui.render())
+                    ui.messages = await client.get_messages(ui.dialogs[ui.selected_chat].entity, limit=50)
+                    ui.loading = False
                     live.update(ui.render())
                 elif key == readchar.key.DOWN:
                     ui.navigate(1)
+                    ui.loading = True
+                    live.update(ui.render())
+                    ui.messages = await client.get_messages(ui.dialogs[ui.selected_chat].entity, limit=50)
+                    ui.loading = False
                     live.update(ui.render())
                 elif key.lower() == 'r':
                     ui.dialogs = await client.get_dialogs(limit=100)
