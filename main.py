@@ -199,6 +199,7 @@ class TShellUI:
                         border_style="#4C566A",
                         box=box.ROUNDED,
                         padding=(0, 1),
+                        width=None,
                     )
                     bubbles.append(bubble)
                 
@@ -223,6 +224,7 @@ class TShellUI:
             border_style="#88C0D0",
             box=box.ROUNDED,
             padding=(1, 2),
+            min_width=80,
         )
 
     def render_footer(self) -> Panel:
