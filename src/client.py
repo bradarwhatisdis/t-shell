@@ -26,6 +26,11 @@ class TShellClient:
         me = await self.client.get_me()
         print(f"Logged in as {me.first_name} {me.last_name or ''} ({me.username})")
 
+    async def get_me(self):
+        if not self.client:
+            raise RuntimeError("Client not initialized. Call start() first.")
+        return await self.client.get_me()
+
     async def get_dialogs(self, limit: int = 10):
         if not self.client:
             raise RuntimeError("Client not initialized. Call start() first.")
