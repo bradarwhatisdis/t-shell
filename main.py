@@ -7,6 +7,9 @@ from rich.prompt import Prompt, Confirm
 from rich.text import Text
 from rich import box
 
+from src.config import Config
+from src.client import TShellClient
+
 console = Console()
 
 async def setup_credentials(config: Config):
