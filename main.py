@@ -187,8 +187,8 @@ class TShellUI:
                             sender = msg.sender.title
                     
                     msg_lines = msg_text.split('\n')
-                    msg_formatted = ' '.join(msg_lines)[:100]
-                    if len(' '.join(msg_lines)) > 100:
+                    msg_formatted = ' '.join(msg_lines)[:80]
+                    if len(' '.join(msg_lines)) > 80:
                         msg_formatted += "..."
                     
                     sender_line = Text.from_markup(f"[bold #81A1C1]{sender}[/]  [#4C566A]{time_str}[/]")
@@ -199,7 +199,7 @@ class TShellUI:
                         border_style="#4C566A",
                         box=box.ROUNDED,
                         padding=(0, 1),
-                        width=None,
+                        expand=True,
                     )
                     bubbles.append(bubble)
                 
@@ -224,7 +224,6 @@ class TShellUI:
             border_style="#88C0D0",
             box=box.ROUNDED,
             padding=(1, 2),
-            min_width=80,
         )
 
     def render_footer(self) -> Panel:
