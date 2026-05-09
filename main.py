@@ -2,7 +2,6 @@ import asyncio
 import sys
 from rich.console import Console
 from rich.table import Table
-from rich.live import Live
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.text import Text
@@ -13,18 +12,12 @@ from src.client import TShellClient
 
 console = Console()
 
-BOX = Box(
-    "╭═╮\n"
-    "│ │\n"
-    "╰═╯"
-)
-
 async def setup_credentials(config: Config):
     console.print("\n")
     with Panel(
         Text("T-Shell Authentication Setup", style="bold cyan"),
         border_style="cyan",
-        box=Box.Double,
+        box=box.DOUBLE,
         padding=(1, 2)
     ) as panel:
         console.print(panel)
@@ -64,7 +57,7 @@ async def display_dashboard(client: TShellClient):
         f"  [dim]ID:[/dim] [cyan]{me.id}[/cyan]",
         title="[bold cyan]T-Shell[/bold cyan]",
         border_style="cyan",
-        box=Box.Double,
+        box=box.DOUBLE,
         padding=(1, 2)
     )
     console.print(header)
@@ -73,7 +66,7 @@ async def display_dashboard(client: TShellClient):
     dialogs = await client.get_dialogs(limit=10)
 
     table = Table(
-        box=Box.Double,
+        box=box.DOUBLE,
         border_style="cyan",
         header_style="bold cyan",
         row_styles=["", "dim"],
@@ -103,7 +96,7 @@ async def display_dashboard(client: TShellClient):
     footer = Panel(
         "[dim]Press [yellow]Enter[/yellow] to refresh · [yellow]Ctrl+C[/yellow] to quit[/dim]",
         border_style="dim",
-        box=Box.Simple,
+        box=box.SIMPLE,
         padding=(0, 1)
     )
     console.print(footer, justify="center")
