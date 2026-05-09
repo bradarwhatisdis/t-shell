@@ -178,18 +178,17 @@ class TShellUI:
                     msg_text = msg.text or "[media]"
                     
                     sender = "Unknown"
-                    if hasattr(msg.sender, 'username') and msg.sender.username:
-                        sender = f"@{msg.sender.username}"
-                    elif hasattr(msg.sender, 'first_name') and msg.sender.first_name:
-                        sender = msg.sender.first_name
-                    elif hasattr(msg.sender, 'title') and msg.sender.title:
-                        sender = msg.sender.title
-                    elif msg.from_id and hasattr(msg.from_id, 'user_id'):
-                        sender = f"User#{msg.from_id.user_id}"
+                    if hasattr(msg, 'sender') and msg.sender:
+                        if hasattr(msg.sender, 'username') and msg.sender.username:
+                            sender = f"@{msg.sender.username}"
+                        elif hasattr(msg.sender, 'first_name') and msg.sender.first_name:
+                            sender = msg.sender.first_name
+                        elif hasattr(msg.sender, 'title') and msg.sender.title:
+                            sender = msg.sender.title
                     
                     msg_lines = msg_text.split('\n')
-                    msg_formatted = '\n'.join(msg_lines[:5])
-                    if len(msg_text) > 200:
+                    msg_formatted = ' '.join(msg_lines)[:100]
+                    if len(' '.join(msg_lines)) > 100:
                         msg_formatted += "..."
                     
                     sender_line = Text.from_markup(f"[bold #81A1C1]{sender}[/]  [#4C566A]{time_str}[/]")
