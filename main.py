@@ -170,9 +170,16 @@ class TShellUI:
             if self.messages:
                 msg_lines = []
                 for msg in reversed(self.messages):
-                    sender = getattr(msg.sender, 'first_name', 'Unknown')
                     time_str = format_time(msg.date)
                     msg_text = msg.text or "[media]"
+                    
+                    if msg.from_id:
+                        sender_id = msg.from_id.user_id if hasattr(msg.from_id, 'user_id') else str(msg.from_id)
+                        sender = f"User#{sender_id}"
+                    elif hasattr(msg, 'sender') and msg.sender:
+                        sender = getattr(msg.sender, 'first_name', None) or getattr(msg.sender, 'title', 'Unknown')
+                    else:
+                        sender = "Unknown"
                     
                     msg_short = msg_text[:80] + "..." if len(msg_text) > 80 else msg_text
                     msg_short = msg_short.replace('\n', ' ')
