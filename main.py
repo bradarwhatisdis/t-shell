@@ -38,11 +38,10 @@ def markup(text: str) -> Text:
 def format_time(dt):
     if not dt:
         return ""
-    if dt.tzinfo is None:
+    if dt.tzinfo is not None:
         dt = dt.replace(tzinfo=None)
     now = datetime.now()
-    today = now.date()
-    if dt.date() == today:
+    if dt.date() == now.date():
         return dt.strftime("%H:%M")
     elif (now - dt).days == 1:
         return "Yesterday"
