@@ -126,7 +126,9 @@ class TShellUI:
             name_text = Text.from_markup(f"{prefix}[{color} bold]{icon} {display_name}[/]")
 
             if dialog.message and dialog.message.text:
-                msg_text = dialog.message.text.replace('\n', ' ')
+                msg_text = dialog.message.text
+                if '\n' in msg_text:
+                    msg_text = msg_text.split('\n')[0]
                 if len(msg_text) > 40:
                     msg_text = msg_text[:37] + "..."
                 msg_line = Text.from_markup(f"   [#4C566A]{msg_text}[/]")
@@ -198,7 +200,6 @@ class TShellUI:
                         border_style="#4C566A",
                         box=box.ROUNDED,
                         padding=(0, 1),
-                        width=80,
                     )
                     bubbles.append(bubble)
                 
