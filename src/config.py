@@ -31,6 +31,9 @@ class Config:
             f.write(f"API_ID={api_id}\n")
             f.write(f"API_HASH={api_hash}\n")
             f.write(f"PHONE={phone}\n")
+        os.environ["API_ID"] = api_id
+        os.environ["API_HASH"] = api_hash
+        os.environ["PHONE"] = phone
 
     def has_credentials(self) -> bool:
         return bool(self.api_id and self.api_hash and self.phone)
