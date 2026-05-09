@@ -170,7 +170,7 @@ class TShellUI:
             )
 
             if self.messages:
-                msg_lines = []
+                bubbles = []
                 for msg in reversed(self.messages):
                     time_str = format_time(msg.date)
                     msg_text = msg.text or "[media]"
@@ -183,13 +183,23 @@ class TShellUI:
                     else:
                         sender = "Unknown"
                     
-                    msg_short = msg_text[:80] + "..." if len(msg_text) > 80 else msg_text
-                    msg_short = msg_short.replace('\n', ' ')
+                    msg_lines = msg_text.split('\n')
+                    msg_formatted = '\n'.join(msg_lines[:5])
+                    if len(msg_text) > 200:
+                        msg_formatted += "..."
                     
-                    msg_lines.append(f"[#EBCB8B]{time_str}[/] [#81A1C1]{sender}[/]: [#ECEFF4]{msg_short}[/]")
+                    sender_line = Text.from_markup(f"[bold #81A1C1]{sender}[/]  [#4C566A]{time_str}[/]")
+                    msg_line = Text.from_markup(f"[#ECEFF4]{msg_formatted}[/]")
+                    
+                    bubble = Panel(
+                        Group(sender_line, msg_line),
+                        border_style="#4C566A",
+                        box=box.ROUNDED,
+                        padding=(0, 1),
+                    )
+                    bubbles.append(bubble)
                 
-                messages_text = Text.from_markup("\n".join(msg_lines))
-                content = Group(header, "", messages_text)
+                content = Group(header, "", Group(*bubbles))
             else:
                 content = Group(header, "", markup(f"[#4C566A]No messages[/]"))
         else:
